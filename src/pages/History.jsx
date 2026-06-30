@@ -119,14 +119,22 @@ export default function History() {
         <div className="space-y-4">
           {histories.map((tx) => (
             <div key={tx.id} className="bg-white border border-gray-200 rounded-2xl p-5 shadow-xl space-y-4">
-              <div className="flex flex-wrap justify-between items-center gap-3 pb-3 border-b border-gray-200 text-xs">
-                <div className="flex items-center gap-4">
-                  <span className="text-gray-500 font-mono">{new Date(tx.created_at).toLocaleString('id-ID')}</span>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-gray-200 text-xs">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-gray-500 font-mono text-[11px]">{new Date(tx.created_at).toLocaleString('id-ID')}</span>
                   <span className="px-2 py-0.5 font-bold uppercase rounded bg-gray-100 text-gray-700 tracking-wider">ID: #{tx.id.substring(0,8)}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-500 flex items-center gap-1 font-medium"><Truck size={13} /> Wilayah: {tx.shipping_region} ({tx.estimated_delivery})</span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-500 border border-amber-500/20">{tx.status}</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-gray-500 flex items-center gap-1 font-medium text-[11px]"><Truck size={13} /> {tx.shipping_region} ({tx.estimated_delivery})</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                    tx.status === 'completed' 
+                      ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' 
+                      : tx.status === 'shipping'
+                        ? 'bg-blue-500/10 text-blue-600 border border-blue-500/20'
+                        : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                  }`}>
+                    {tx.status === 'completed' ? 'SELESAI' : tx.status === 'shipping' ? 'DALAM PERJALANAN' : 'PROSES'}
+                  </span>
                 </div>
               </div>
 
@@ -136,11 +144,11 @@ export default function History() {
                   const isReviewed = tx.product_reviews?.some(r => r.product_id === itemProduct.id);
 
                   return (
-                    <div key={item.id} className="py-4 flex flex-wrap justify-between items-center gap-4 first:pt-0 last:pb-0">
-                      <div className="flex items-center gap-4">
-                        <img src={itemProduct.image_url || 'https://via.placeholder.com/150'} alt={itemProduct.name} className="w-14 h-14 object-cover rounded-xl border border-gray-200" />
-                        <div>
-                          <h3 className="font-bold text-gray-900 text-sm">{itemProduct.name || 'Produk Terhapus'}</h3>
+                    <div key={item.id} className="py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 first:pt-0 last:pb-0">
+                      <div className="flex items-center gap-3 w-full sm:w-auto">
+                        <img src={itemProduct.image_url || 'https://via.placeholder.com/150'} alt={itemProduct.name} className="w-12 h-12 sm:w-14 sm:h-14 object-cover rounded-xl border border-gray-200 shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-bold text-gray-900 text-sm truncate">{itemProduct.name || 'Produk Terhapus'}</h3>
                           <p className="text-xs text-gray-500 mt-0.5">{item.quantity} Barang x Rp {Number(item.price).toLocaleString('id-ID')}</p>
                         </div>
                       </div>
@@ -150,13 +158,17 @@ export default function History() {
                           <span className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-500 bg-orange-50 border border-orange-200 px-3 py-1.5 rounded-xl">
                             <CheckCircle size={13} /> Ulasan Terkirim
                           </span>
-                        ) : (
+                        ) : tx.status === 'completed' ? (
                           <button
                             onClick={() => handleOpenReviewModal(tx.id, itemProduct)}
                             className="bg-white border border-gray-200 hover:border-amber-500/40 text-amber-500 font-bold text-xs px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 hover:bg-amber-50 active:scale-95"
                           >
                             <Star size={13} fill="currentColor" /> Beri Bintang & Komen
                           </button>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-400 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-xl">
+                            <Clock size={13} /> Tunggu Pesanan Tiba
+                          </span>
                         )}
                       </div>
                     </div>
@@ -164,9 +176,9 @@ export default function History() {
                 })}
               </div>
 
-              <div className="pt-3 border-t border-gray-200 flex justify-between items-center text-sm">
-                <span className="text-gray-500 text-xs">Metode Pembayaran: <strong className="text-gray-600 font-mono font-bold">{tx.payment_method}</strong></span>
-                <span className="font-bold text-gray-900">Total Bayar: <span className="text-orange-600 font-black font-mono">Rp {Number(tx.amount).toLocaleString('id-ID')}</span></span>
+              <div className="pt-3 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-sm">
+                <span className="text-gray-500 text-xs">Metode: <strong className="text-gray-600 font-mono font-bold">{tx.payment_method}</strong></span>
+                <span className="font-bold text-gray-900 text-xs sm:text-sm">Total Bayar: <span className="text-orange-600 font-black font-mono">Rp {Number(tx.amount).toLocaleString('id-ID')}</span></span>
               </div>
             </div>
           ))}
@@ -174,9 +186,9 @@ export default function History() {
       )}
 
       {selectedProduct && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4 text-left relative">
-            <h3 className="text-base font-black text-gray-900 flex items-center gap-2">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 lg:p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-md p-4 lg:p-6 shadow-2xl space-y-4 text-left relative mx-auto">
+            <h3 className="text-sm lg:text-base font-black text-gray-900 flex items-center gap-2">
               <MessageSquareCheck className="text-amber-500" size={18} /> ULAS PRODUK BELANJAAN
             </h3>
             <p className="text-xs text-gray-500">Berikan penilaian objektif lu untuk produk <strong className="text-gray-900">{selectedProduct.name}</strong>, boskuh.</p>

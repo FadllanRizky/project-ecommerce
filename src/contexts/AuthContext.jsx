@@ -1,6 +1,6 @@
 import { createContext, useContext, useState } from 'react';
 import Swal from 'sweetalert2';
-import axios from 'axios'; // 🔥 WAJIB IMPORT AXIOS BUAT REFRESH DATA USER, BOS!
+import api from '../api/axiosInstance'; 
 
 const AuthContext = createContext();
 
@@ -32,9 +32,7 @@ export const AuthProvider = ({ children }) => {
     }
 
     try {
-      // 🔥 Tembak backend port 3000 buat ambil data user paling fresh dari DB Supabase
-      // (Sesuaikan jika nama endpoint profile lu berbeda, misal: /api/users/profile)
-      const response = await axios.get('http://localhost:3000/api/auth/me', {
+      const response = await api.get('/auth/me', {
         headers: { Authorization: `Bearer ${token}` }
       });
 

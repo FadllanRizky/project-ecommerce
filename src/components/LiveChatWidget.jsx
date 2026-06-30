@@ -121,16 +121,16 @@ export default function LiveChatWidget() {
   const isAdmin = user?.role === 'admin';
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 font-sans">
+    <div className="fixed bottom-4 right-4 lg:bottom-6 lg:right-6 z-50 font-sans">
       
       {!isOpen && (
         <button
           id="live-chat-trigger-btn"
           onClick={() => setIsOpen(true)}
-          className="p-4 bg-orange-500 hover:bg-orange-400 text-white rounded-full shadow-2xl transition-all flex items-center justify-center transform hover:scale-105 active:scale-95 duration-200"
+          className="p-3 lg:p-4 bg-orange-500 hover:bg-orange-400 text-white rounded-full shadow-2xl transition-all flex items-center justify-center transform hover:scale-105 active:scale-95 duration-200"
         >
           <div className="relative">
-            <MessageSquare size={24} />
+            <MessageSquare size={20} />
             <span className="absolute -top-1.5 -right-1.5 flex h-3 w-3">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
@@ -140,8 +140,8 @@ export default function LiveChatWidget() {
       )}
 
       {isOpen && (
-        <div className={`bg-white border border-gray-200 rounded-2xl shadow-2xl flex overflow-hidden animate-in slide-in-from-bottom-5 duration-300 h-[500px] ${
-          isAdmin ? 'w-[750px]' : 'w-[360px]'
+        <div className={`bg-white border border-gray-200 rounded-2xl shadow-2xl flex overflow-hidden animate-in slide-in-from-bottom-5 duration-300 h-[80vh] lg:h-[500px] ${
+          isAdmin ? 'w-[90vw] lg:w-[750px]' : 'w-[90vw] sm:w-[360px]'
         }`}>
           
           {isAdmin && (

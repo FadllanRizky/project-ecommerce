@@ -1,27 +1,46 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ShoppingCart, LogIn, LogOut, PackageCheck, History, Wallet, Heart, ShieldCheck, LayoutDashboard, User } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Navbar({ cartCount, onCartClick, currentTab, setTab, favoriteCount }) {
   const { user, token, logout, setIsAuthModalOpen, setAuthMode } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Cek apakah user login sebagai admin
   const isAdmin = token && user?.role === 'admin';
 
+  const handleTabChange = (tab) => {
+    setTab(tab);
+    setMobileMenuOpen(false);
+  };
+
   return (
-    <nav className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm px-6 py-4 flex justify-between items-center transition-all duration-300">
+    <nav className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm px-4 lg:px-6 py-3 lg:py-4 transition-all duration-300">
+      <div className="flex justify-between items-center">
       
       <div 
-        className="flex items-center gap-2 cursor-pointer group" 
+        className="flex items-center gap-2 cursor-pointer group shrink-0" 
         onClick={() => setTab(isAdmin ? 'admin' : 'products')}
       >
-        <div className="w-8 h-8 bg-linear-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center shadow-lg shadow-orange-500/20 group-hover:rotate-12 transition-transform">
-          <span className="text-white font-black text-xs">M</span>
+        <div className="w-7 h-7 lg:w-8 lg:h-8 bg-linear-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center shadow-lg shadow-orange-500/20 group-hover:rotate-12 transition-transform">
+          <span className="text-white font-black text-[10px] lg:text-xs">M</span>
         </div>
-        <span className="text-xl font-black tracking-tighter">
+        <span className="text-base lg:text-xl font-black tracking-tighter">
           <span className="text-gray-800">MBUR</span> <span className="text-orange-500">STORE</span>
         </span>
       </div>
+
+      {/* 🔥 Mobile hamburger */}
+      <button 
+        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        className="md:hidden p-2 text-gray-500 hover:text-gray-900"
+      >
+        <div className="space-y-1">
+          <span className={`block w-6 h-0.5 bg-gray-600 transition-transform ${mobileMenuOpen ? 'rotate-45 translate-y-1.5' : ''}`}></span>
+          <span className={`block w-6 h-0.5 bg-gray-600 transition-opacity ${mobileMenuOpen ? 'opacity-0' : ''}`}></span>
+          <span className={`block w-6 h-0.5 bg-gray-600 transition-transform ${mobileMenuOpen ? '-rotate-45 -translate-y-1.5' : ''}`}></span>
+        </div>
+      </button>
 
       <div className="hidden md:flex items-center gap-2 text-[11px] font-black uppercase tracking-widest">
         
@@ -139,6 +158,37 @@ export default function Navbar({ cartCount, onCartClick, currentTab, setTab, fav
           </div>
         )}
       </div>
+      </div>
+
+      {/* 🔥 MOBILE DROPDOWN MENU */}
+      {mobileMenuOpen && (
+        <div className="md:hidden mt-3 border-t border-gray-200 pt-3 flex flex-col gap-2 animate-in slide-in-from-top duration-200">
+          {isAdmin ? (
+            <button onClick={() => handleTabChange('admin')} className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-widest ${currentTab === 'admin' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:bg-gray-50'}`}>
+              <LayoutDashboard size={14} className="inline mr-2" /> Kontrol Dashboard
+            </button>
+          ) : (
+            <>
+              <button onClick={() => handleTabChange('products')} className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-widest ${currentTab === 'products' ? 'bg-orange-50 text-orange-600 border border-orange-200' : 'text-gray-600 hover:bg-gray-50'}`}>
+                Etalase
+              </button>
+              {token && (
+                <>
+                  <button onClick={() => handleTabChange('loans')} className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-widest ${currentTab === 'loans' ? 'bg-orange-50 text-orange-600 border border-orange-200' : 'text-gray-600 hover:bg-gray-50'}`}>
+                    <PackageCheck size={14} className="inline mr-2" /> Pinjaman
+                  </button>
+                  <button onClick={() => handleTabChange('history')} className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-widest ${currentTab === 'history' ? 'bg-orange-50 text-orange-600 border border-orange-200' : 'text-gray-600 hover:bg-gray-50'}`}>
+                    <History size={14} className="inline mr-2" /> Riwayat
+                  </button>
+                  <button onClick={() => handleTabChange('profile')} className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-widest ${currentTab === 'profile' ? 'bg-orange-50 text-orange-600 border border-orange-200' : 'text-gray-600 hover:bg-gray-50'}`}>
+                    <User size={14} className="inline mr-2" /> Profil Saya
+                  </button>
+                </>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </nav>
   );
 }

@@ -14,6 +14,7 @@ import { uploadApi } from '../api/uploadApi';
 export default function AdminDashboard() {
   const { user, token, refreshUser } = useAuth();
   const [currentSubTab, setCurrentSubTab] = useState('profile'); // Default langsung diarahkan ke profil admin baru
+  const [sidebarOpen, setSidebarOpen] = useState(false); // 🔥 Untuk mobile toggle sidebar
   
   // State Data Utama
   const [allUsers, setAllUsers] = useState([]);
@@ -182,12 +183,17 @@ export default function AdminDashboard() {
       preConfirm: () => {
         const nameVal = document.getElementById('p-name').value;
         const slugVal = document.getElementById('p-slug').value;
+        const priceVal = Number(document.getElementById('p-price').value || 0);
+        if (priceVal <= 0) {
+          Swal.showValidationMessage('Harga produk harus lebih dari 0, bos!');
+          return false;
+        }
         return {
           category_id: document.getElementById('p-category').value || null,
           name: nameVal,
           slug: slugVal || nameVal.toLowerCase().trim().replace(/[^a-z0-9 -]/g, '').replace(/\s+/g, '-'),
           brand: document.getElementById('p-brand').value,
-          price: Number(document.getElementById('p-price').value || 0),
+          price: priceVal,
           stok: Number(document.getElementById('p-stok').value || 0),
           image_url: document.getElementById('p-img').value,
           description: document.getElementById('p-desc').value
@@ -241,16 +247,23 @@ export default function AdminDashboard() {
         </div>
       `,
       background: '#111827', color: '#fff', showCancelButton: true,
-      preConfirm: () => ({
-        category_id: document.getElementById('p-category').value || null,
-        name: document.getElementById('p-name').value,
-        slug: document.getElementById('p-slug').value,
-        brand: document.getElementById('p-brand').value,
-        price: Number(document.getElementById('p-price').value || 0),
-        stok: Number(document.getElementById('p-stok').value || 0),
-        image_url: document.getElementById('p-img').value,
-        description: document.getElementById('p-desc').value
-      })
+      preConfirm: () => {
+        const priceVal = Number(document.getElementById('p-price').value || 0);
+        if (priceVal <= 0) {
+          Swal.showValidationMessage('Harga produk harus lebih dari 0, bos!');
+          return false;
+        }
+        return {
+          category_id: document.getElementById('p-category').value || null,
+          name: document.getElementById('p-name').value,
+          slug: document.getElementById('p-slug').value,
+          brand: document.getElementById('p-brand').value,
+          price: priceVal,
+          stok: Number(document.getElementById('p-stok').value || 0),
+          image_url: document.getElementById('p-img').value,
+          description: document.getElementById('p-desc').value
+        };
+      }
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
@@ -440,10 +453,23 @@ export default function AdminDashboard() {
   }, [selectedChatUser]);
 
   return (
-    <div className="flex gap-6 min-h-[80vh] font-sans antialiased text-gray-700">
+    <div className="flex flex-col lg:flex-row gap-6 min-h-[80vh] font-sans antialiased text-gray-700">
+
+      {/* 🔥 MOBILE HAMBURGER TOGGLE */}
+      <button
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className="lg:hidden flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-700 mb-2 w-full"
+      >
+        <div className="space-y-1">
+          <span className="block w-5 h-0.5 bg-gray-600"></span>
+          <span className="block w-5 h-0.5 bg-gray-600"></span>
+          <span className="block w-5 h-0.5 bg-gray-600"></span>
+        </div>
+        Menu Navigasi
+      </button>
 
       {/* SIDEBAR NAVIGATION */}
-      <div className="w-64 bg-white border border-gray-200 rounded-2xl p-4 space-y-1 flex flex-col justify-between">
+      <div className={`${sidebarOpen ? 'block' : 'hidden'} lg:block w-full lg:w-64 bg-white border border-gray-200 rounded-2xl p-4 space-y-1 flex flex-col justify-between`}>
         <div className="space-y-2">
           <div className="p-3 bg-white border border-gray-200/80 rounded-xl mb-4 flex items-center gap-3">
             <div className="p-2 bg-cyan-500/10 rounded-lg text-cyan-400"><Shield size={18} /></div>
@@ -454,11 +480,11 @@ export default function AdminDashboard() {
           </div>
 
           {/* 🔥 MENU BARU: PROFIL & BIODATA ADMIN */}
-          <button onClick={() => setCurrentSubTab('profile')} className={`w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${currentSubTab === 'profile' ? 'bg-cyan-500 text-white shadow-md shadow-cyan-500/10' : 'hover:bg-slate-800 text-slate-400'}`}>
+          <button onClick={() => { setCurrentSubTab('profile'); setSidebarOpen(false); }} className={`w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${currentSubTab === 'profile' ? 'bg-cyan-500 text-white shadow-md shadow-cyan-500/10' : 'hover:bg-slate-800 text-slate-400'}`}>
             <User size={16} /> Profil & Saldo Admin
           </button>
 
-          <button onClick={() => setCurrentSubTab('loans')} className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${currentSubTab === 'loans' ? 'bg-cyan-500 text-white' : 'hover:bg-slate-800 text-slate-400'}`}>
+          <button onClick={() => { setCurrentSubTab('loans'); setSidebarOpen(false); }} className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${currentSubTab === 'loans' ? 'bg-cyan-500 text-white' : 'hover:bg-slate-800 text-slate-400'}`}>
             <span className="flex items-center gap-2"><DollarSign size={16} /> Approval Kredit</span>
             {allLoans.filter(l => l?.status === 'pending').length > 0 && (
               <span className="bg-amber-500 text-slate-950 px-1.5 py-0.5 rounded-md text-[9px] font-black">
@@ -467,7 +493,7 @@ export default function AdminDashboard() {
             )}
           </button>
 
-          <button onClick={() => setCurrentSubTab('purchases')} className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${currentSubTab === 'purchases' ? 'bg-cyan-500 text-white' : 'hover:bg-slate-800 text-slate-400'}`}>
+          <button onClick={() => { setCurrentSubTab('purchases'); setSidebarOpen(false); }} className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${currentSubTab === 'purchases' ? 'bg-cyan-500 text-white' : 'hover:bg-slate-800 text-slate-400'}`}>
             <span className="flex items-center gap-2"><Receipt size={16} /> Notif Pembelian</span>
             {allTransactions.length > 0 && (
               <span className="bg-emerald-500 text-slate-950 px-1.5 py-0.5 rounded-md text-[9px] font-black">
@@ -476,28 +502,28 @@ export default function AdminDashboard() {
             )}
           </button>
 
-          <button onClick={() => setCurrentSubTab('users')} className={`w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${currentSubTab === 'users' ? 'bg-cyan-500 text-white' : 'hover:bg-slate-800 text-slate-400'}`}>
+          <button onClick={() => { setCurrentSubTab('users'); setSidebarOpen(false); }} className={`w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${currentSubTab === 'users' ? 'bg-cyan-500 text-white' : 'hover:bg-slate-800 text-slate-400'}`}>
             <Users size={16} /> Manajemen Users
           </button>
 
-          <button onClick={() => setCurrentSubTab('products')} className={`w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${currentSubTab === 'products' ? 'bg-cyan-500 text-white' : 'hover:bg-slate-800 text-slate-400'}`}>
+          <button onClick={() => { setCurrentSubTab('products'); setSidebarOpen(false); }} className={`w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${currentSubTab === 'products' ? 'bg-cyan-500 text-white' : 'hover:bg-slate-800 text-slate-400'}`}>
             <ShoppingBag size={16} /> Manajemen Produk
           </button>
 
-          <button onClick={() => setCurrentSubTab('categories')} className={`w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${currentSubTab === 'categories' ? 'bg-cyan-500 text-white' : 'hover:bg-slate-800 text-slate-400'}`}>
+          <button onClick={() => { setCurrentSubTab('categories'); setSidebarOpen(false); }} className={`w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${currentSubTab === 'categories' ? 'bg-cyan-500 text-white' : 'hover:bg-slate-800 text-slate-400'}`}>
             <Tag size={16} /> Manajemen Kategori
           </button>
 
-          <button onClick={() => setCurrentSubTab('shipping')} className={`w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${currentSubTab === 'shipping' ? 'bg-cyan-500 text-white' : 'hover:bg-slate-800 text-slate-400'}`}>
+          <button onClick={() => { setCurrentSubTab('shipping'); setSidebarOpen(false); }} className={`w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${currentSubTab === 'shipping' ? 'bg-cyan-500 text-white' : 'hover:bg-slate-800 text-slate-400'}`}>
             <Truck size={16} /> Wilayah Pengiriman
           </button>
 
-          <button onClick={() => setCurrentSubTab('reviews')} className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${currentSubTab === 'reviews' ? 'bg-cyan-500 text-white' : 'hover:bg-slate-800 text-slate-400'}`}>
+          <button onClick={() => { setCurrentSubTab('reviews'); setSidebarOpen(false); }} className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${currentSubTab === 'reviews' ? 'bg-cyan-500 text-white' : 'hover:bg-slate-800 text-slate-400'}`}>
             <span className="flex items-center gap-2"><Star size={16} /> Ulasan Bintang</span>
             {allReviews.length > 0 && <span className="bg-amber-500 text-slate-950 px-1.5 py-0.5 rounded-md text-[9px] font-black">{allReviews.length}</span>}
           </button>
 
-          <button onClick={() => setCurrentSubTab('chat')} className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${currentSubTab === 'chat' ? 'bg-cyan-500 text-white' : 'hover:bg-slate-800 text-slate-400'}`}>
+          <button onClick={() => { setCurrentSubTab('chat'); setSidebarOpen(false); }} className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${currentSubTab === 'chat' ? 'bg-cyan-500 text-white' : 'hover:bg-slate-800 text-slate-400'}`}>
             <span className="flex items-center gap-2"><MessageSquare size={16} /> Hub Chat Masuk</span>
             {chatUsers.length > 0 && <span className="bg-rose-500 text-white px-1.5 py-0.5 rounded-md text-[9px] font-black animate-pulse">{chatUsers.length}</span>}
           </button>
@@ -505,7 +531,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* RIGHT BOARD CONTENT */}
-      <div className="flex-1 bg-white/30 border border-gray-200/50 rounded-2xl p-6 backdrop-blur-sm">
+      <div className="flex-1 bg-white/30 border border-gray-200/50 rounded-2xl p-3 lg:p-6 backdrop-blur-sm overflow-hidden">
 
         {/* 🔥 TAMPILAN BARU: UI BIODATA PROFILE & SALDO ADMIN */}
         {currentSubTab === 'profile' && (
@@ -518,9 +544,9 @@ export default function AdminDashboard() {
             </div>
 
             {/* Grid Atas: Info Utama & Saldo */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               {/* Card Biodata Utama */}
-              <div className="md:col-span-2 bg-white/60 border border-gray-200 p-5 rounded-2xl flex flex-col sm:flex-row items-center gap-5 relative overflow-hidden">
+              <div className="lg:col-span-2 bg-white/60 border border-gray-200 p-5 rounded-2xl flex flex-col sm:flex-row items-center gap-5 relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-8 opacity-[0.02] pointer-events-none">
                   <Shield size={160} className="text-white" />
                 </div>
@@ -706,13 +732,20 @@ export default function AdminDashboard() {
                     <th className="p-3.5">Pembeli</th>
                     <th className="p-3.5">Item Produk</th>
                     <th className="p-3.5">Total Pengeluaran</th>
+                    <th className="p-3.5">Wilayah</th>
+                    <th className="p-3.5">Estimasi Tiba</th>
+                    <th className="p-3.5">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/50">
                   {allTransactions.length === 0 ? (
-                    <tr><td colSpan="3" className="p-4 text-center text-slate-500">Belum ada data pembelian terdeteksi dari sistem.</td></tr>
+                    <tr><td colSpan="6" className="p-4 text-center text-slate-500">Belum ada data pembelian terdeteksi dari sistem.</td></tr>
                   ) : (
-                    allTransactions.map((t, index) => (
+                    allTransactions.map((t, index) => {
+                      const arrivalDate = t.estimated_arrival_date 
+                        ? new Date(t.estimated_arrival_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+                        : t.estimated_delivery || '-';
+                      return (
                       <tr key={t.id || index} className="hover:bg-white/20">
                         <td className="p-3.5">
                           <div className="font-bold text-white">{t.users?.full_name || t.full_name || 'Anonymous User'}</div>
@@ -724,8 +757,26 @@ export default function AdminDashboard() {
                         <td className="p-3.5 font-black text-emerald-400">
                           Rp {Number(t.amount || t.total_amount || t.price || 0).toLocaleString('id-ID')}
                         </td>
+                        <td className="p-3.5 text-slate-400 text-[10px]">
+                          <span className="font-medium">{t.shipping_region || '-'}</span>
+                        </td>
+                        <td className="p-3.5 text-slate-400 text-[10px] font-mono">
+                          {arrivalDate}
+                        </td>
+                        <td className="p-3.5">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                            t.status === 'completed' 
+                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                              : t.status === 'shipping'
+                                ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                                : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                          }`}>
+                            {t.status === 'completed' ? 'SELESAI' : t.status === 'shipping' ? 'DALAM PERJALANAN' : 'PROSES'}
+                          </span>
+                        </td>
                       </tr>
-                    ))
+                    );
+                  })
                   )}
                 </tbody>
               </table>
@@ -990,13 +1041,13 @@ export default function AdminDashboard() {
                         return (
                           <div key={msg.id || idx} className={`flex ${isFromAdmin ? 'justify-end ml-auto' : 'justify-start'} max-w-[85%]`}>
                             <div className={`rounded-2xl p-3 shadow-md ${isFromAdmin
-                              ? 'bg-linear-to-br from-cyan-600 to-cyan-800 text-white rounded-tr-none shadow-cyan-950/20'
+                              ? 'bg-orange-500 text-white rounded-tr-none shadow-orange-950/20'
                               : 'bg-white border border-gray-200 rounded-tl-none'
                               }`}>
-                              <p className={`text-xs leading-relaxed ${isFromAdmin ? 'text-cyan-50 font-medium' : 'text-slate-200'}`}>
+                              <p className={`text-xs leading-relaxed ${isFromAdmin ? 'text-orange-50 font-medium' : 'text-slate-200'}`}>
                                 {msg.message}
                               </p>
-                              <span className={`block text-[8px] font-mono mt-1 ${isFromAdmin ? 'text-cyan-200/60 text-right' : 'text-slate-500 text-left'}`}>
+                              <span className={`block text-[8px] font-mono mt-1 ${isFromAdmin ? 'text-orange-200/60 text-right' : 'text-slate-500 text-left'}`}>
                                 {new Date(msg.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} - {isFromAdmin ? 'Admin' : 'Customer'}
                               </span>
                             </div>

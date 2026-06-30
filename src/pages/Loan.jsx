@@ -135,6 +135,17 @@ export default function Loan({ autoSelectProduct, clearAutoSelect }) {
       });
       return false;
     }
+    const cleanPhone = phoneNumber.replace(/\D/g, '');
+    if (cleanPhone.length !== 12) {
+      Swal.fire({
+        title: 'Nomor HP Tidak Valid!',
+        text: 'Nomor Whatsapp harus tepat 12 digit angka (contoh: 081234567890), boskuh!',
+        icon: 'warning',
+        background: '#FFF', color: '#374151', confirmButtonColor: '#F59E0B',
+        customClass: { popup: 'border border-gray-200 rounded-2xl' }
+      });
+      return false;
+    }
     if (!idCardFile) {
       Swal.fire({
         title: 'Berkas KTP Kosong!',
@@ -427,6 +438,7 @@ export default function Loan({ autoSelectProduct, clearAutoSelect }) {
             <label className="text-[10px] uppercase tracking-widest font-bold text-gray-500 block mb-1.5">No. WhatsApp Aktif</label>
             <input 
               type="text" 
+              maxLength={12}
               value={phoneNumber} 
               onChange={e => {
                 const raw = e.target.value.replace(/\D/g, '');
@@ -439,7 +451,7 @@ export default function Loan({ autoSelectProduct, clearAutoSelect }) {
                 }
               }}
               className="w-full bg-white border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-orange-500 transition-colors text-gray-900" 
-              placeholder="08xxxxxxxxxx"
+              placeholder="081234567890"
             />
           </div>
         </div>
@@ -617,16 +629,17 @@ export default function Loan({ autoSelectProduct, clearAutoSelect }) {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+              <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[600px]">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200 text-[10px] font-bold uppercase tracking-widest text-gray-500">
-                    <th className="p-4">ID Kontrak</th>
-                    <th className="p-4">Tanggal Akad</th>
-                    <th className="p-4">Deskripsi Dana / Produk</th>
-                    <th className="p-4">Angsuran / Bulan</th>
-                    <th className="p-4">Sisa Tagihan</th>
-                    <th className="p-4 text-rose-500"><span className="flex items-center gap-1"><Calendar size={12}/> Jatuh Tempo</span></th>
-                    <th className="p-4 text-right">Aksi Pembayaran</th>
+                    <th className="p-3 lg:p-4">ID Kontrak</th>
+                    <th className="p-3 lg:p-4">Tanggal Akad</th>
+                    <th className="p-3 lg:p-4">Deskripsi Dana / Produk</th>
+                    <th className="p-3 lg:p-4">Angsuran / Bulan</th>
+                    <th className="p-3 lg:p-4">Sisa Tagihan</th>
+                    <th className="p-3 lg:p-4 text-rose-500"><span className="flex items-center gap-1"><Calendar size={12}/> Jatuh Tempo</span></th>
+                    <th className="p-3 lg:p-4 text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 text-sm text-gray-700">
@@ -642,28 +655,28 @@ export default function Loan({ autoSelectProduct, clearAutoSelect }) {
 
                     return (
                       <tr key={l.id || l._id} className="hover:bg-gray-50 transition-colors">
-                        <td className="p-4 font-mono text-xs text-gray-400 font-bold">
+                        <td className="p-3 lg:p-4 font-mono text-xs text-gray-400 font-bold">
                           #{String(l.id || l._id).slice(-6).toUpperCase()}
                         </td>
-                        <td className="p-4 text-xs font-medium text-gray-500">
+                        <td className="p-3 lg:p-4 text-xs font-medium text-gray-500 whitespace-nowrap">
                           {formatIndonesianDate(l.created_at)}
                         </td>
-                        <td className="p-4">
-                          <div className="font-bold text-gray-900">
+                        <td className="p-3 lg:p-4 min-w-0">
+                          <div className="font-bold text-gray-900 text-xs lg:text-sm">
                             {isCash ? '💵 Dana Tunai Eksklusif' : `📦 ${l.products?.description || 'Unit Gadget Premium'}`}
                           </div>
                           <span className="text-[10px] text-gray-400 font-mono block uppercase">Via {l.payment_method}</span>
                         </td>
-                        <td className="p-4 text-orange-500 font-bold">
+                        <td className="p-3 lg:p-4 text-orange-500 font-bold text-xs lg:text-sm whitespace-nowrap">
                           {formatRupiah(l.monthly_payment)} <span className="text-[10px] text-gray-400 font-normal">/ bln</span>
                         </td>
-                        <td className="p-4 text-gray-900 font-mono font-bold">
+                        <td className="p-3 lg:p-4 text-gray-900 font-mono font-bold text-xs lg:text-sm whitespace-nowrap">
                           {formatRupiah(sisaTagihanUang)}
                         </td>
-                        <td className="p-4 font-bold text-rose-500">
+                        <td className="p-3 lg:p-4 font-bold text-rose-500 text-xs whitespace-nowrap">
                           {calculateNextDueDate(l)}
                         </td>
-                        <td className="p-4 text-right">
+                        <td className="p-3 lg:p-4 text-right">
                           <button
                             onClick={() => handleBayarCicilan(l)}
                             disabled={isLunas}
@@ -678,6 +691,7 @@ export default function Loan({ autoSelectProduct, clearAutoSelect }) {
                   })}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
         </div>
@@ -697,14 +711,14 @@ export default function Loan({ autoSelectProduct, clearAutoSelect }) {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+              <table className="w-full text-left border-collapse min-w-[500px]">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200 text-[10px] font-bold uppercase tracking-widest text-gray-500">
-                    <th className="p-4">ID Berkas</th>
-                    <th className="p-4">Tipe Pembiayaan</th>
-                    <th className="p-4">Nilai Pokok Pinjaman</th>
-                    <th className="p-4">Tenor</th>
-                    <th className="p-4 text-right">Status Keputusan Admin</th>
+                    <th className="p-3 lg:p-4">ID Berkas</th>
+                    <th className="p-3 lg:p-4">Tipe Pembiayaan</th>
+                    <th className="p-3 lg:p-4">Nilai Pokok Pinjaman</th>
+                    <th className="p-3 lg:p-4">Tenor</th>
+                    <th className="p-3 lg:p-4 text-right">Status Keputusan Admin</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 text-sm text-gray-700">
@@ -713,21 +727,21 @@ export default function Loan({ autoSelectProduct, clearAutoSelect }) {
                     const isRejected = l.status === 'rejected';
                     return (
                       <tr key={l.id || l._id} className="hover:bg-gray-50 transition-colors">
-                        <td className="p-4 font-mono text-xs text-gray-400">
+                        <td className="p-3 lg:p-4 font-mono text-xs text-gray-400">
                           #{String(l.id || l._id).slice(-6).toUpperCase()}
                         </td>
-                        <td className="p-4">
+                        <td className="p-3 lg:p-4">
                           <span className={`inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md border ${isCash ? 'bg-orange-50 text-orange-500 border-orange-200' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>
                             {isCash ? 'Cash Financing' : 'Product Financing'}
                           </span>
                         </td>
-                        <td className="p-4 font-bold text-gray-600">
+                        <td className="p-3 lg:p-4 font-bold text-gray-600 text-xs lg:text-sm whitespace-nowrap">
                           {isCash ? formatRupiah(l.loan_amount) : formatRupiah(l.products?.price || l.loan_amount || 0)}
                         </td>
-                        <td className="p-4 text-gray-500 font-medium">
+                        <td className="p-3 lg:p-4 text-gray-500 font-medium text-xs lg:text-sm">
                           {l.tenure_month || 6} Bulan
                         </td>
-                        <td className="p-4 text-right">
+                        <td className="p-3 lg:p-4 text-right">
                           <span className={`inline-flex items-center gap-1 text-[10px] uppercase tracking-widest font-black px-3 py-1 rounded-full border ${isRejected ? 'bg-red-50 text-rose-500 border-rose-200' : 'bg-amber-50 text-amber-500 border-amber-200'}`}>
                             {isRejected ? (
                               <><AlertCircle size={11} /> Ditolak Admin</>

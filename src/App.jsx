@@ -141,10 +141,10 @@ export default function App() {
   if (token && user?.role === 'admin') {
     return (
       <div className="min-h-screen bg-gray-50 text-gray-800 font-sans antialiased selection:bg-blue-500/30">
-        <header className="bg-white border-b border-gray-200 shadow-sm px-6 py-4 flex justify-between items-center max-w-6xl mx-auto mt-4 rounded-2xl">
+        <header className="bg-white border-b border-gray-200 shadow-sm px-4 lg:px-6 py-4 flex justify-between items-center max-w-6xl mx-auto mt-0 lg:mt-4 rounded-none lg:rounded-2xl">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse" />
-            <h1 className="text-sm font-black tracking-widest text-gray-800 uppercase">MBUR STORE — DASHBOARD</h1>
+            <h1 className="text-xs lg:text-sm font-black tracking-widest text-gray-800 uppercase">MBUR STORE — DASHBOARD</h1>
           </div>
           <button 
             onClick={() => {
@@ -153,11 +153,11 @@ export default function App() {
             }} 
             className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-xl transition-colors"
           >
-            LOGOUT ADMIN
+            LOGOUT
           </button>
         </header>
 
-        <main className="max-w-6xl mx-auto px-4 py-8">
+        <main className="max-w-6xl mx-auto px-3 lg:px-4 py-4 lg:py-8">
           <AdminDashboard />
         </main>
 
@@ -283,7 +283,7 @@ export default function App() {
         favoriteCount={favorites.length}
       />
 
-      <main className="max-w-6xl mx-auto px-4 py-10">
+      <main className="max-w-6xl mx-auto px-3 lg:px-4 py-6 lg:py-10">
         {activeTab === 'products' && (
           <Product 
             onAddToCart={handleAddToCart} 
