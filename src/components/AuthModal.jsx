@@ -58,7 +58,7 @@ export default function AuthModal() {
         <div className="flex justify-between items-center mb-6">
           <div>
             <h2 className="text-xl font-black text-gray-900 tracking-wide uppercase">
-              {authMode === 'login' ? 'Masuk Akun Bos' : 'Daftar Member Mbur'}
+              {authMode === 'login' ? 'Masuk Akun' : 'Daftar Member Mbaru'}
             </h2>
             <p className="text-xs text-gray-500 mt-0.5">Akses platform transaksi & pinjaman instan.</p>
           </div>
@@ -91,7 +91,7 @@ export default function AuthModal() {
               <Mail className="absolute left-3 top-2.5 text-gray-400" size={16} />
               <input 
                 type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-                placeholder="bos@mbur.com"
+                placeholder="fadllan@gmail.com"
                 className="w-full bg-white border border-gray-200 focus:border-orange-500 text-gray-900 text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none transition-all"
               />
             </div>
@@ -121,7 +121,7 @@ export default function AuthModal() {
 
         <div className="mt-5 pt-4 border-t border-gray-200 text-center">
           <p className="text-xs text-gray-500">
-            {authMode === 'login' ? 'Belum punya akun bos?' : 'Sudah terdaftar sebagai member?'}
+            {authMode === 'login' ? 'Belum punya akun ya?' : 'Sudah terdaftar sebagai member?'}
             <button 
               onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
               className="text-orange-500 font-bold ml-1 hover:underline"

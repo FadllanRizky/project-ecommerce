@@ -1042,7 +1042,7 @@ export default function AdminDashboard() {
                           <div key={msg.id || idx} className={`flex ${isFromAdmin ? 'justify-end ml-auto' : 'justify-start'} max-w-[85%]`}>
                             <div className={`rounded-2xl p-3 shadow-md ${isFromAdmin
                               ? 'bg-orange-500 text-white rounded-tr-none shadow-orange-950/20'
-                              : 'bg-white border border-gray-200 rounded-tl-none'
+                              : 'bg-blue border border-gray-200 rounded-tl-none'
                               }`}>
                               <p className={`text-xs leading-relaxed ${isFromAdmin ? 'text-orange-50 font-medium' : 'text-slate-200'}`}>
                                 {msg.message}

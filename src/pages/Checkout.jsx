@@ -92,7 +92,7 @@ export default function Checkout({ cart, totalAmount, clearCart, setTab }) {
                 <h1 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
                     <ShoppingBag className="text-orange-500" size={24} /> FORM TRANSAKSI & PEMESANAN
                 </h1>
-                <p className="text-xs text-gray-400 mt-1">Konfirmasi barang belanjaan dan cek simulasi pengiriman regional Indonesia.</p>
+                <p className="text-xs text-gray-400 mt-1">Konfirmasi barang belanjaan dan cek pengiriman regional Indonesia.</p>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -137,7 +137,7 @@ export default function Checkout({ cart, totalAmount, clearCart, setTab }) {
                         <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-start gap-3">
                             <Truck className="text-blue-600 shrink-0 mt-0.5" size={18} />
                             <div>
-                                <h5 className="text-xs font-bold text-gray-700">Simulasi Estimasi Tiba:</h5>
+                                <h5 className="text-xs font-bold text-gray-700">Estimasi Tiba:</h5>
                                 <p className="text-sm font-black text-blue-600 mt-0.5">{estimation}</p>
                             </div>
                         </div>
