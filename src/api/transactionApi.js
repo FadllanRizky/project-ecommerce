@@ -24,5 +24,34 @@ export const transactionApi = {
       headers: { Authorization: `Bearer ${token}` }
     });
     return response.data;
+  },
+
+  updateStatus: async (id, status, token) => {
+    const response = await api.patch(`/transactions/${id}/status`, { status }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+  },
+
+  shipOrder: async (id, token) => {
+    const response = await api.patch(`/transactions/${id}/status`, { status: 'shipping' }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+  },
+
+  completeOrder: async (id, token) => {
+    const response = await api.patch(`/transactions/${id}/status`, { status: 'completed' }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+  },
+
+  // Alias ramah untuk tombol "Pesanan Sudah Diterima" di History
+  confirmReceived: async (id, token) => {
+    const response = await api.patch(`/transactions/${id}/status`, { status: 'completed' }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
   }
 };

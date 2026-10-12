@@ -6,7 +6,7 @@ import api from '../api/axiosInstance';
 import { uploadApi } from '../api/uploadApi';
 
 export default function Profile() {
-  const { user, token } = useAuth();
+  const { user, token, updateUser } = useAuth();
   const [profile, setProfile] = useState(user);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -41,6 +41,12 @@ export default function Profile() {
 
     if (!file.type.startsWith('image/')) {
       Swal.fire({ title: 'Format Salah', text: 'Harus berupa file gambar!', icon: 'warning', background: '#FFF', color: '#374151' });
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      Swal.fire({ title: 'Kegedean Bos!', text: 'Ukuran foto maksimal 5MB.', icon: 'warning', background: '#FFF', color: '#374151' });
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
@@ -48,13 +54,19 @@ export default function Profile() {
     try {
       const res = await uploadApi.uploadAvatar(file);
       if (res?.avatar_url) {
-        const updatedUser = { ...profile, avatar_url: res.avatar_url };
+        const updatedUser = { ...(profile || user || {}), avatar_url: res.avatar_url };
         setProfile(updatedUser);
-        localStorage.setItem('user', JSON.stringify(updatedUser));
+        try {
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+        } catch { /* abaikan */ }
+        if (updateUser) updateUser({ avatar_url: res.avatar_url });
         Swal.fire({ title: 'Berhasil!', text: 'Foto profil berhasil diupload!', icon: 'success', background: '#FFF', color: '#374151', timer: 1500, showConfirmButton: false });
+      } else {
+        throw new Error('Server tidak mengembalikan URL avatar.');
       }
     } catch (err) {
-      Swal.fire({ title: 'Gagal!', text: err.response?.data?.error || 'Gagal upload avatar', icon: 'error', background: '#FFF', color: '#374151' });
+      const msg = err.response?.data?.error || err.response?.data?.message || err.message || 'Gagal upload avatar';
+      Swal.fire({ title: 'Gagal!', text: msg, icon: 'error', background: '#FFF', color: '#374151' });
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -63,19 +75,27 @@ export default function Profile() {
 
   const handleUrlSubmit = async () => {
     if (!urlValue.trim()) return;
+    if (!/^https?:\/\/.+/i.test(urlValue.trim())) {
+      Swal.fire({ title: 'URL Salah', text: 'Harus diawali http:// atau https://', icon: 'warning', background: '#FFF', color: '#374151' });
+      return;
+    }
     setUploading(true);
     try {
       const res = await uploadApi.updateAvatarUrl(urlValue.trim());
       if (res?.avatar_url) {
-        const updatedUser = { ...profile, avatar_url: res.avatar_url };
+        const updatedUser = { ...(profile || user || {}), avatar_url: res.avatar_url };
         setProfile(updatedUser);
-        localStorage.setItem('user', JSON.stringify(updatedUser));
+        try {
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+        } catch { /* abaikan */ }
+        if (updateUser) updateUser({ avatar_url: res.avatar_url });
         Swal.fire({ title: 'Berhasil!', text: 'URL avatar diperbarui!', icon: 'success', background: '#FFF', color: '#374151', timer: 1500, showConfirmButton: false });
         setShowUrlInput(false);
         setUrlValue('');
       }
     } catch (err) {
-      Swal.fire({ title: 'Gagal!', text: err.response?.data?.error || 'Gagal update URL avatar', icon: 'error', background: '#FFF', color: '#374151' });
+      const msg = err.response?.data?.error || err.response?.data?.message || err.message || 'Gagal update URL avatar';
+      Swal.fire({ title: 'Gagal!', text: msg, icon: 'error', background: '#FFF', color: '#374151' });
     } finally {
       setUploading(false);
     }
@@ -101,7 +121,7 @@ export default function Profile() {
                   src={p.avatar_url}
                   alt="avatar"
                   className="w-16 h-16 rounded-2xl object-cover border border-gray-200"
-                  onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                  onError={(e) => { e.target.style.display = 'none'; if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'; }}
                 />
               ) : null}
               <div className={`w-16 h-16 bg-linear-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-orange-200 ${p.avatar_url ? 'hidden' : ''}`}>

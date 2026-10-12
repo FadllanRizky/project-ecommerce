@@ -10,7 +10,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const savedUser = localStorage.getItem('user');
       return savedUser ? JSON.parse(savedUser) : null;
-    } catch (e) {
+    } catch {
       return null;
     }
   });
@@ -101,16 +101,31 @@ export const AuthProvider = ({ children }) => {
     return true;
   };
 
+  // ✅ Update user global (dipakai setelah upload avatar agar Navbar ikut refresh)
+  const updateUser = (patch) => {
+    setUser((prev) => {
+      const next = typeof patch === 'function' ? patch(prev) : { ...(prev || {}), ...(patch || {}) };
+      try {
+        localStorage.setItem('user', JSON.stringify(next));
+      } catch {
+        /* abaikan */
+      }
+      return next;
+    });
+  };
+
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      token, 
-      login, 
-      logout, 
-      checkAuth, 
-      isAuthModalOpen, 
-      setIsAuthModalOpen, 
-      authMode, 
+    <AuthContext.Provider value={{
+      user,
+      setUser,
+      updateUser,
+      token,
+      login,
+      logout,
+      checkAuth,
+      isAuthModalOpen,
+      setIsAuthModalOpen,
+      authMode,
       setAuthMode,
       refreshUser // 🔥 WAJIB DIEKSPOR BIAR BISA DIPANGGIL DI CHECKOUT.JSX
     }}>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { transactionApi } from '../api/transactionApi';
 import { shippingRegionApi } from '../api/shippingRegionApi';
@@ -23,6 +23,17 @@ export default function Checkout({ cart, totalAmount, clearCart, setTab }) {
 
     const selectedRegionData = regions.find(r => r.name === region);
     const estimation = selectedRegionData ? selectedRegionData.estimated_delivery : '-';
+    const estimationArrival = useMemo(() => {
+      try {
+        if (!selectedRegionData?.estimated_delivery) return '-';
+        const m = String(selectedRegionData.estimated_delivery).match(/(\d+)/g);
+        const days = m ? Math.max(...m.map(Number).filter(Number.isFinite)) : 7;
+        const d = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+        return `${d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })} (${days} hari)`;
+      } catch {
+        return '-';
+      }
+    }, [selectedRegionData]);
 
     const handleProcessCheckout = async () => {
         if (!region) {
@@ -139,6 +150,8 @@ export default function Checkout({ cart, totalAmount, clearCart, setTab }) {
                             <div>
                                 <h5 className="text-xs font-bold text-gray-700">Estimasi Tiba:</h5>
                                 <p className="text-sm font-black text-blue-600 mt-0.5">{estimation}</p>
+                                <p className="text-[11px] text-gray-500 mt-0.5">Perkiraan sampai: <strong className="text-gray-700">{estimationArrival}</strong></p>
+                                <p className="text-[10px] text-gray-400 mt-1">Status otomatis: PROSES → DALAM PERJALANAN (½ estimasi) → SUCCESS setelah tiba. Bisa juga klik “Pesanan Sudah Diterima”.</p>
                             </div>
                         </div>
 

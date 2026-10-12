@@ -9,7 +9,15 @@ import Swal from 'sweetalert2';
 import api from '../api/axiosInstance';
 import { adminService } from '../api/adminApi';
 import { shippingRegionApi } from '../api/shippingRegionApi';
+import { transactionApi } from '../api/transactionApi';
 import { uploadApi } from '../api/uploadApi';
+
+const normalizeTxStatus = (raw) => {
+  const s = String(raw || '').trim().toLowerCase();
+  if (['completed', 'complete', 'success', 'sukses', 'selesai', 'done'].includes(s)) return 'completed';
+  if (['shipping', 'shipped', 'kirim', 'dikirim', 'dalam perjalanan', 'delivery'].includes(s)) return 'shipping';
+  return 'processing';
+};
 
 export default function AdminDashboard() {
   const { user, token, refreshUser } = useAuth();
@@ -354,6 +362,29 @@ export default function AdminDashboard() {
     }
   };
 
+  // ==================== 📦 HANDLER STATUS TRANSAKSI (Kirim / Selesaikan) ====================
+  const handleShipTransaction = async (id) => {
+    try {
+      const res = await transactionApi.shipOrder(id, token);
+      Swal.fire({ title: 'Dikirim!', text: res?.message || 'Pesanan masuk tahap pengiriman.', icon: 'success', background: '#111827', color: '#fff', timer: 1500, showConfirmButton: false });
+      loadAdminData();
+    } catch (err) {
+      Swal.fire({ title: 'Gagal!', text: err.response?.data?.error || 'Gagal mengubah ke shipping.', icon: 'error', background: '#111827', color: '#fff' });
+    }
+  };
+
+  const handleCompleteTransaction = async (id) => {
+    const ok = await Swal.fire({ title: 'Selesaikan pesanan?', text: 'Status akan menjadi SUCCESS / SELESAI.', icon: 'question', showCancelButton: true, confirmButtonColor: '#10b981', background: '#111827', color: '#fff', confirmButtonText: 'Ya, Selesaikan' });
+    if (!ok.isConfirmed) return;
+    try {
+      const res = await transactionApi.completeOrder(id, token);
+      Swal.fire({ title: 'Selesai!', text: res?.message || 'Pesanan SUCCESS.', icon: 'success', background: '#111827', color: '#fff', timer: 1500, showConfirmButton: false });
+      loadAdminData();
+    } catch (err) {
+      Swal.fire({ title: 'Gagal!', text: err.response?.data?.error || 'Gagal menyelesaikan pesanan.', icon: 'error', background: '#111827', color: '#fff' });
+    }
+  };
+
   // ==================== 🚚 HANDLER CRUD SHIPPING REGIONS ====================
   const handleAddRegion = () => {
     Swal.fire({
@@ -556,7 +587,7 @@ export default function AdminDashboard() {
                       src={user.avatar_url}
                       alt="avatar"
                       className="w-20 h-20 rounded-2xl object-cover border border-cyan-500/30"
-                      onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                      onError={(e) => { e.target.style.display = 'none'; if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'; }}
                     />
                   ) : null}
                   <div className={`w-20 h-20 bg-linear-to-tr from-cyan-600 to-indigo-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-xl shadow-cyan-950/50 shrink-0 border border-cyan-500/30 ${user?.avatar_url ? 'hidden' : ''}`}>
@@ -568,16 +599,30 @@ export default function AdminDashboard() {
                   <input id="admin-avatar-input" type="file" accept="image/*" className="hidden"
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
+                      e.target.value = '';
                       if (!file) return;
+                      if (!file.type.startsWith('image/')) {
+                        Swal.fire({ title: 'Format Salah!', text: 'Harus berupa file gambar.', icon: 'warning', background: '#111827', color: '#fff' });
+                        return;
+                      }
+                      if (file.size > 5 * 1024 * 1024) {
+                        Swal.fire({ title: 'Kegedean Bos!', text: 'Maksimal 5MB.', icon: 'warning', background: '#111827', color: '#fff' });
+                        return;
+                      }
+                      Swal.fire({ title: 'Mengupload...', text: 'Sabar bos, lagi dikirim ke Storage.', icon: 'info', background: '#111827', color: '#fff', showConfirmButton: false, allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                       try {
                         const res = await uploadApi.uploadAvatar(file);
                         if (res?.avatar_url) {
                           const updatedUser = { ...user, avatar_url: res.avatar_url };
                           localStorage.setItem('user', JSON.stringify(updatedUser));
+                          Swal.fire({ title: 'Berhasil!', text: 'Foto admin diperbarui.', icon: 'success', background: '#111827', color: '#fff', timer: 1500, showConfirmButton: false });
                           window.location.reload();
+                        } else {
+                          throw new Error('Server tidak mengembalikan URL avatar.');
                         }
                       } catch (err) {
-                        Swal.fire({ title: 'Gagal!', text: err.response?.data?.error || 'Gagal upload avatar', icon: 'error', background: '#111827', color: '#fff' });
+                        const msg = err.response?.data?.error || err.response?.data?.message || err.message || 'Gagal upload avatar';
+                        Swal.fire({ title: 'Gagal!', text: msg, icon: 'error', background: '#111827', color: '#fff' });
                       }
                     }}
                   />
@@ -735,16 +780,18 @@ export default function AdminDashboard() {
                     <th className="p-3.5">Wilayah</th>
                     <th className="p-3.5">Estimasi Tiba</th>
                     <th className="p-3.5">Status</th>
+                    <th className="p-3.5 text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/50">
                   {allTransactions.length === 0 ? (
-                    <tr><td colSpan="6" className="p-4 text-center text-slate-500">Belum ada data pembelian terdeteksi dari sistem.</td></tr>
+                    <tr><td colSpan="7" className="p-4 text-center text-slate-500">Belum ada data pembelian terdeteksi dari sistem.</td></tr>
                   ) : (
                     allTransactions.map((t, index) => {
-                      const arrivalDate = t.estimated_arrival_date 
+                      const arrivalDate = t.estimated_arrival_date
                         ? new Date(t.estimated_arrival_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
                         : t.estimated_delivery || '-';
+                      const st = normalizeTxStatus(t.status);
                       return (
                       <tr key={t.id || index} className="hover:bg-white/20">
                         <td className="p-3.5">
@@ -759,20 +806,37 @@ export default function AdminDashboard() {
                         </td>
                         <td className="p-3.5 text-slate-400 text-[10px]">
                           <span className="font-medium">{t.shipping_region || '-'}</span>
+                          {t.estimated_delivery && <span className="block text-slate-500">({t.estimated_delivery})</span>}
                         </td>
                         <td className="p-3.5 text-slate-400 text-[10px] font-mono">
                           {arrivalDate}
                         </td>
                         <td className="p-3.5">
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                            t.status === 'completed' 
-                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
-                              : t.status === 'shipping'
+                            st === 'completed'
+                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                              : st === 'shipping'
                                 ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
                                 : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
                           }`}>
-                            {t.status === 'completed' ? 'SELESAI' : t.status === 'shipping' ? 'DALAM PERJALANAN' : 'PROSES'}
+                            {st === 'completed' ? 'SUCCESS / SELESAI' : st === 'shipping' ? 'DALAM PERJALANAN' : 'PROSES'}
                           </span>
+                        </td>
+                        <td className="p-3.5 text-right">
+                          {st === 'completed' ? (
+                            <span className="text-[11px] text-slate-500 font-medium">Selesai</span>
+                          ) : (
+                            <div className="flex justify-end gap-1.5">
+                              {st === 'processing' && (
+                                <button onClick={() => handleShipTransaction(t.id)} className="px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black rounded-lg flex items-center gap-0.5 transition-colors">
+                                  <Truck size={11} /> KIRIM
+                                </button>
+                              )}
+                              <button onClick={() => handleCompleteTransaction(t.id)} className="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black rounded-lg flex items-center gap-0.5 transition-colors">
+                                <Check size={11} /> SELESAI
+                              </button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     );

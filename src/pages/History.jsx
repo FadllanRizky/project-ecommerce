@@ -1,13 +1,72 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { transactionApi } from '../api/transactionApi';
-import { Clock, Truck, Star, MessageSquareCheck, CheckCircle } from 'lucide-react';
+import { Clock, Truck, Star, MessageSquareCheck, CheckCircle, RefreshCw, PackageCheck } from 'lucide-react';
 import Swal from 'sweetalert2';
+
+// Samakan dengan backend normalizeStatus: DB 'completed' tampil sebagai SUCCESS/SELESAI
+function normalizeStatus(raw) {
+  const s = String(raw || '').trim().toLowerCase();
+  if (['completed', 'complete', 'success', 'sukses', 'selesai', 'done'].includes(s)) return 'completed';
+  if (['shipping', 'shipped', 'kirim', 'dikirim', 'dalam perjalanan', 'delivery'].includes(s)) return 'shipping';
+  return 'processing';
+}
+
+function getStatusMeta(raw) {
+  const st = normalizeStatus(raw);
+  if (st === 'completed') {
+    return {
+      key: 'completed',
+      label: 'SUCCESS / SELESAI',
+      cls: 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20',
+    };
+  }
+  if (st === 'shipping') {
+    return {
+      key: 'shipping',
+      label: 'DALAM PERJALANAN',
+      cls: 'bg-blue-500/10 text-blue-600 border border-blue-500/20',
+    };
+  }
+  return {
+    key: 'processing',
+    label: 'PROSES',
+    cls: 'bg-amber-500/10 text-amber-500 border border-amber-500/20',
+  };
+}
+
+function parseMaxDays(estimation) {
+  if (estimation === null || estimation === undefined) return 7;
+  const m = String(estimation).match(/(\d+)/g);
+  if (!m) return 7;
+  const nums = m.map(Number).filter(Number.isFinite);
+  return nums.length ? Math.max(...nums) : 7;
+}
+
+function getEtaInfo(tx) {
+  try {
+    let arrival = tx.estimated_arrival_date ? new Date(tx.estimated_arrival_date) : null;
+    if (!arrival || Number.isNaN(arrival.getTime())) {
+      if (!tx.created_at) return null;
+      const created = new Date(tx.created_at);
+      if (Number.isNaN(created.getTime())) return null;
+      arrival = new Date(created.getTime() + parseMaxDays(tx.estimated_delivery) * 24 * 60 * 60 * 1000);
+    }
+    const now = new Date();
+    const diffMs = arrival.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffMs / (24 * 60 * 60 * 1000));
+    return { arrival, diffDays };
+  } catch {
+    return null;
+  }
+}
 
 export default function History() {
   const { token } = useAuth();
   const [histories, setHistories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [confirmingId, setConfirmingId] = useState(null);
 
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [txIdForReview, setTxIdForReview] = useState(null);
@@ -25,22 +84,66 @@ export default function History() {
     }
   };
 
-  const fetchHistory = async () => {
+  const fetchHistory = useCallback(async (silent = false) => {
     if (!token) return;
-    loading || setLoading(true);
+    if (silent) setRefreshing(true);
+    else setLoading(true);
     try {
       const data = await transactionApi.getHistory(token);
       setHistories(data.success ? data.data : []);
     } catch (err) {
-      console.error("Gagal load history transaksi belanja:", err);
+      if (!silent) console.error("Gagal load history transaksi belanja:", err);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     fetchHistory();
-  }, [token]);
+  }, [fetchHistory]);
+
+  // Polling ringan tiap 20 detik agar perubahan shipping->completed (via cron/admin) terlihat tanpa reload manual
+  useEffect(() => {
+    if (!token) return;
+    const iv = setInterval(() => fetchHistory(true), 20000);
+    return () => clearInterval(iv);
+  }, [token, fetchHistory]);
+
+  const handleConfirmReceived = async (txId) => {
+    const ok = await Swal.fire({
+      ...lightSwal,
+      title: 'BARANG SUDAH SAMPAI?',
+      text: 'Klik YA jika paket sudah diterima. Status akan berubah menjadi SUCCESS / SELESAI.',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#10b981',
+      cancelButtonColor: '#9ca3af',
+      confirmButtonText: 'Ya, Sudah Sampai',
+      cancelButtonText: 'Belum',
+    });
+    if (!ok.isConfirmed) return;
+
+    setConfirmingId(txId);
+    try {
+      const res = await transactionApi.confirmReceived(txId, token);
+      if (res?.success) {
+        setHistories((prev) => prev.map((t) => (t.id === txId ? { ...t, status: 'completed' } : t)));
+        Swal.fire({ ...lightSwal, title: 'MANTAP BOSKUH!', text: 'Pesanan ditandai SELESAI (SUCCESS). Silakan kasih bintang!', icon: 'success', confirmButtonColor: '#f97316', timer: 1800, showConfirmButton: false });
+        fetchHistory(true);
+      }
+    } catch (err) {
+      Swal.fire({
+        ...lightSwal,
+        title: 'GAGAL UPDATE!',
+        text: err.response?.data?.error || err.response?.data?.message || 'Gagal menandai pesanan diterima.',
+        icon: 'error',
+        confirmButtonColor: '#ef4444',
+      });
+    } finally {
+      setConfirmingId(null);
+    }
+  };
 
   const handleOpenReviewModal = (txId, product) => {
     setTxIdForReview(txId);
@@ -51,7 +154,7 @@ export default function History() {
 
   const handleSubmitReview = async (e) => {
     e.preventDefault();
-    
+
     if (!comment.trim()) {
       return Swal.fire({
         ...lightSwal,
@@ -61,7 +164,7 @@ export default function History() {
         confirmButtonColor: '#f59e0b',
       });
     }
-    
+
     setSubmittingReview(true);
 
     try {
@@ -80,9 +183,9 @@ export default function History() {
           icon: 'success',
           confirmButtonColor: '#f97316',
         });
-        
+
         setSelectedProduct(null);
-        fetchHistory(); 
+        fetchHistory(true);
       }
     } catch (err) {
       Swal.fire({
@@ -99,11 +202,21 @@ export default function History() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 text-gray-600 max-w-5xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
-          <Clock className="text-orange-500" size={24} /> RIWAYAT BELANJA & PESANAN
-        </h1>
-        <p className="text-xs text-gray-400 mt-1">Pantau status pengiriman logistik serta berikan ulasan bintang pada barang yang dibeli.</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
+            <Clock className="text-orange-500" size={24} /> RIWAYAT BELANJA & PESANAN
+          </h1>
+          <p className="text-xs text-gray-400 mt-1">Pantau status pengiriman logistik serta berikan ulasan bintang pada barang yang dibeli.</p>
+        </div>
+        <button
+          onClick={() => fetchHistory(true)}
+          disabled={refreshing || loading}
+          className="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:text-gray-900 hover:border-orange-300 transition-all active:scale-95 disabled:opacity-50"
+        >
+          <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
+          {refreshing ? 'Menyegarkan...' : 'Refresh Status'}
+        </button>
       </div>
 
       {loading ? (
@@ -117,26 +230,31 @@ export default function History() {
         </div>
       ) : (
         <div className="space-y-4">
-          {histories.map((tx) => (
+          {histories.map((tx) => {
+            const meta = getStatusMeta(tx.status);
+            const eta = getEtaInfo(tx);
+            const canConfirm = meta.key === 'processing' || meta.key === 'shipping';
+            return (
             <div key={tx.id} className="bg-white border border-gray-200 rounded-2xl p-5 shadow-xl space-y-4">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-gray-200 text-xs">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-gray-500 font-mono text-[11px]">{new Date(tx.created_at).toLocaleString('id-ID')}</span>
-                  <span className="px-2 py-0.5 font-bold uppercase rounded bg-gray-100 text-gray-700 tracking-wider">ID: #{tx.id.substring(0,8)}</span>
+                  <span className="text-gray-500 font-mono text-[11px]">{tx.created_at ? new Date(tx.created_at).toLocaleString('id-ID') : '-'}</span>
+                  <span className="px-2 py-0.5 font-bold uppercase rounded bg-gray-100 text-gray-700 tracking-wider">ID: #{String(tx.id || '').substring(0,8)}</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-gray-500 flex items-center gap-1 font-medium text-[11px]"><Truck size={13} /> {tx.shipping_region} ({tx.estimated_delivery})</span>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                    tx.status === 'completed' 
-                      ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' 
-                      : tx.status === 'shipping'
-                        ? 'bg-blue-500/10 text-blue-600 border border-blue-500/20'
-                        : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
-                  }`}>
-                    {tx.status === 'completed' ? 'SELESAI' : tx.status === 'shipping' ? 'DALAM PERJALANAN' : 'PROSES'}
+                  <span className="text-gray-500 flex items-center gap-1 font-medium text-[11px]"><Truck size={13} /> {tx.shipping_region || '-'} ({tx.estimated_delivery || '-'})</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${meta.cls}`}>
+                    {meta.label}
                   </span>
                 </div>
               </div>
+
+              {eta && meta.key !== 'completed' && (
+                <div className={`text-[11px] font-medium px-3 py-2 rounded-xl border ${eta.diffDays < 0 ? 'bg-rose-50 border-rose-200 text-rose-600' : 'bg-blue-50 border-blue-200 text-blue-700'}`}>
+                  Estimasi tiba: <strong>{eta.arrival.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</strong>
+                  {' '}— {eta.diffDays < 0 ? `terlambat ${Math.abs(eta.diffDays)} hari (segera jadi SUCCESS otomatis / klik diterima)` : eta.diffDays === 0 ? 'tiba hari ini' : `sisa ${eta.diffDays} hari`}
+                </div>
+              )}
 
               <div className="divide-y divide-gray-200">
                 {tx.transaction_items?.map((item) => {
@@ -153,12 +271,12 @@ export default function History() {
                         </div>
                       </div>
 
-                      <div>
+                      <div className="flex flex-wrap items-center gap-2">
                         {isReviewed ? (
                           <span className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-500 bg-orange-50 border border-orange-200 px-3 py-1.5 rounded-xl">
                             <CheckCircle size={13} /> Ulasan Terkirim
                           </span>
-                        ) : tx.status === 'completed' ? (
+                        ) : meta.key === 'completed' ? (
                           <button
                             onClick={() => handleOpenReviewModal(tx.id, itemProduct)}
                             className="bg-white border border-gray-200 hover:border-amber-500/40 text-amber-500 font-bold text-xs px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 hover:bg-amber-50 active:scale-95"
@@ -178,10 +296,23 @@ export default function History() {
 
               <div className="pt-3 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-sm">
                 <span className="text-gray-500 text-xs">Metode: <strong className="text-gray-600 font-mono font-bold">{tx.payment_method}</strong></span>
-                <span className="font-bold text-gray-900 text-xs sm:text-sm">Total Bayar: <span className="text-orange-600 font-black font-mono">Rp {Number(tx.amount).toLocaleString('id-ID')}</span></span>
+                <div className="flex flex-wrap items-center gap-2">
+                  {canConfirm && (
+                    <button
+                      onClick={() => handleConfirmReceived(tx.id)}
+                      disabled={confirmingId === tx.id}
+                      className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-black text-[11px] uppercase tracking-widest px-4 py-2 rounded-xl transition-all active:scale-95"
+                    >
+                      <PackageCheck size={13} />
+                      {confirmingId === tx.id ? 'Memproses...' : 'Pesanan Sudah Diterima'}
+                    </button>
+                  )}
+                  <span className="font-bold text-gray-900 text-xs sm:text-sm">Total Bayar: <span className="text-orange-600 font-black font-mono">Rp {Number(tx.amount).toLocaleString('id-ID')}</span></span>
+                </div>
               </div>
             </div>
-          ))}
+          );
+          })}
         </div>
       )}
 
@@ -204,10 +335,10 @@ export default function History() {
                       onClick={() => setRating(star)}
                       className="transition-transform active:scale-90"
                     >
-                      <Star 
-                        size={26} 
-                        className={star <= rating ? 'text-amber-500' : 'text-gray-300'} 
-                        fill={star <= rating ? 'currentColor' : 'none'} 
+                      <Star
+                        size={26}
+                        className={star <= rating ? 'text-amber-500' : 'text-gray-300'}
+                        fill={star <= rating ? 'currentColor' : 'none'}
                       />
                     </button>
                   ))}
